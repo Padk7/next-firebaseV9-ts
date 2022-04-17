@@ -33,7 +33,7 @@ function SignInButton(): JSX.Element {
     )
 }
 
-function SignOutButton(): JSX.Element {
+export function SignOutButton(): JSX.Element {
     return (
         <button onClick={() => auth.signOut()}>
             Sign Out

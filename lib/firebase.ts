@@ -77,7 +77,7 @@ async function getUserDocFromUsername(username: string): Promise< QueryDocumentS
         where('username', '==', username),
         limit(1))
     const userDoc = (await getDocs(usersQuery)).docs[0]
-    if (userDoc.exists()) {
+    if (userDoc?.exists()) {
         //user = {...userDoc.data(), ref: userDoc.ref} as User
         return userDoc
     } else {
@@ -104,10 +104,13 @@ export async function getUserFromUsername(username: string): Promise< User | nul
  * Gets all users/{uid}/posts documents from username
  * @param {string} username
 */
-export async function getUserPostsFromUsername(username: string): Promise<Post[]> {
+export async function getUserPostsFromUsername(username: string) {
+    let user: User | null = null
     let posts: Post[] = []
+
     const userDoc = await getUserDocFromUsername(username)
     if (userDoc) {
+        user = userDoc.data() as User
         const postsRef = collection(userDoc.ref, 'posts')
         const postsQuery = query(postsRef,
             where('published', '==', true),
@@ -115,7 +118,7 @@ export async function getUserPostsFromUsername(username: string): Promise<Post[]
             orderBy('createdAt', 'desc'))
         posts = (await getDocs(postsQuery)).docs.map(postToJSON)
     }
-    return posts
+    return {user, posts}
 }
 
 /**

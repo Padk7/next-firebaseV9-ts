@@ -1,6 +1,6 @@
 import UserProfile from '../../components/UserProfile'
 import PostFeed from '../../components/PostFeed'
-import { getUserWithUsername, getPostsFromUser, User, Post } from '../../lib/firebase';
+import { getUserPostsFromUsername, User, Post } from '../../lib/firebase';
 import { GetServerSideProps } from 'next'
 
 type UserProfileProp = {
@@ -10,15 +10,12 @@ type UserProfileProp = {
 
 export const getServerSideProps: GetServerSideProps = async({ query }) => {
   let user: User | null = null
-  let posts: Post[] | null = null
+  let posts: Post[] = []
 
   const { username } = query;
 
   if (typeof username === 'string') {
-    user = await getUserWithUsername(username)
-    if (user) {
-      posts = await getPostsFromUser(user)
-    }
+    ;({ user, posts } = await getUserPostsFromUsername(username))
   }
   return {
     props: { user, posts }

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { useContext } from 'react'
 import { UserContext } from '../lib/context'
+import { SignOutButton } from '../pages/enter'
 
 // Top navbar
 export default function Navbar() {
@@ -22,6 +23,11 @@ export default function Navbar() {
                         <li className="push-left">
                             <Link href="/admin">
                                 <button className="btn-blue">Write Posts</button>
+                            </Link>
+                        </li>
+                        <li>
+                            <Link href="/">
+                                <SignOutButton/>
                             </Link>
                         </li>
                         <li>
