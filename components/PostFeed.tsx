@@ -1,10 +1,21 @@
 import Link from "next/link"
+import { Post } from '../lib/firebase'
 
-export default function PostFeed({ posts, admin=false }) {
-  return posts ? posts.map((post) => <PostItem post={post} key={post.slug} admin={admin} />) : null
+type PostFeedProps = {
+  posts: Post[],
+  admin: boolean
 }
 
-function PostItem({ post, admin = false }) {
+type PostItemProps = {
+  post: Post,
+  admin: boolean
+}
+
+export default function PostFeed({ posts, admin }: PostFeedProps) {
+  return <>{posts ? posts.map((post) => <PostItem post={post} key={post.slug} admin={admin} />) : null}</>
+}
+
+function PostItem({ post, admin = false }: PostItemProps) {
   const wordCount = post?.content.trim().split(/\d+/g).length
   const minutesToRead = (wordCount / 100 + 1).toFixed(0)
 

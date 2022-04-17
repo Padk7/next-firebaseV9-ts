@@ -1,7 +1,21 @@
 import { initializeApp, getApp, FirebaseApp } from 'firebase/app'
 import { Auth, getAuth, GoogleAuthProvider } from 'firebase/auth'
-import { getFirestore,Firestore, collection, query,
-    where, limit,getDocs, QueryDocumentSnapshot, DocumentData, orderBy } from 'firebase/firestore'
+import {
+    collection,
+    collectionGroup,
+    DocumentData,
+    getDocs,
+    getFirestore,
+    Firestore,
+    limit,
+    orderBy,
+    query,
+    QueryDocumentSnapshot,
+    startAfter,
+    Timestamp,
+    where,
+    DocumentReference
+} from 'firebase/firestore'
 import { getStorage, FirebaseStorage } from 'firebase/storage'
 
 const firebaseConfig = {
@@ -14,7 +28,7 @@ const firebaseConfig = {
     measurementId: "G-TGRFWKL4EJ"
 };
 
-let app : FirebaseApp
+let app: FirebaseApp
 try {
     app = getApp()
 } catch {
@@ -27,43 +41,123 @@ export const googleAuthProvider: GoogleAuthProvider = new GoogleAuthProvider()
 export const firestore: Firestore = getFirestore()
 export const storage: FirebaseStorage = getStorage()
 
+export type User = {
+    uid: string,
+    displayName: string,
+    photoURL: string,
+    username: string
+}
+
+export type Post = {
+    content: string,
+    createdAt: Timestamp | number,
+    heartCount: number,
+    published: boolean,
+    slug: string,
+    title: string,
+    uid: string,
+    updatedAt: Timestamp | number,
+    username: string
+}
+
+const collectionRefs = {
+    users: collection(firestore, 'users'),
+    posts: collectionGroup(firestore, 'posts') 
+}
+
 /// Helper functions
 
 /**
  * Gets a users/{uid} document with username
  * @param {string} username
 */
-export async function getUserWithUsername(username: string) {
-    const usersRef = collection(firestore, 'users')
-    const usersQuery = query(usersRef,
-                        where('username', '==', username),
-                        limit(1))
+async function getUserDocFromUsername(username: string): Promise< QueryDocumentSnapshot<DocumentData> | null > {
+    let user: User
+    const usersQuery = query(collectionRefs.users,
+        where('username', '==', username),
+        limit(1))
     const userDoc = (await getDocs(usersQuery)).docs[0]
-    return userDoc
+    if (userDoc.exists()) {
+        //user = {...userDoc.data(), ref: userDoc.ref} as User
+        return userDoc
+    } else {
+        return null
+    }
 }
 
 /**
- * Gets all users/{uid}/posts documents from user
- * @param {QueryDocumentSnapshot<DocumentData>} userDoc
+ * Gets a users/{uid} user object with username
+ * @param {string} username
 */
-export async function getPostsFromUser(userDoc : QueryDocumentSnapshot<DocumentData>) {
-    const postsRef = collection(userDoc.ref, 'posts')
-    const postsQuery = query(postsRef,
-                        where('published', '==', true),
-                        limit(5),
-                        orderBy('createdAt','desc'))
-    const posts = (await getDocs(postsQuery)).docs
+export async function getUserFromUsername(username: string): Promise< User | null > {
+    let user: User
+    const userDoc = await getUserDocFromUsername(username)
+    if (userDoc?.exists()) {
+        user = userDoc.data() as User
+        return user
+    } else {
+        return null
+    }
+}
+
+/**
+ * Gets all users/{uid}/posts documents from username
+ * @param {string} username
+*/
+export async function getUserPostsFromUsername(username: string): Promise<Post[]> {
+    let posts: Post[] = []
+    const userDoc = await getUserDocFromUsername(username)
+    if (userDoc) {
+        const postsRef = collection(userDoc.ref, 'posts')
+        const postsQuery = query(postsRef,
+            where('published', '==', true),
+            limit(5),
+            orderBy('createdAt', 'desc'))
+        posts = (await getDocs(postsQuery)).docs.map(postToJSON)
+    }
     return posts
 }
 
 /**
  * Converts a firestore document to JSON
  */
-export function postToJSON(doc){
+export function postToJSON(doc: QueryDocumentSnapshot<DocumentData>): Post {
     const data = doc.data();
     return {
         ...data,
         createdAt: data.createdAt.toMillis(),
         updatedAt: data.updatedAt.toMillis()
-    }
+    } as Post
+}
+
+/**
+ * Gets most recent posts from all users
+ * @param {number} numberOfPosts
+ */
+export async function getRecentPosts(numberOfPosts: number): Promise<Post[]> {
+    const postsQuery = query(collectionRefs.posts,
+        where('published', '==', true),
+        orderBy('createdAt', 'desc'),
+        limit(numberOfPosts))
+    const posts = (await getDocs(postsQuery)).docs.map(postToJSON)
+    return posts
+}
+
+/**
+ * Gets most recent posts from all users
+ * @param {any} posts
+ * @param {number} numberOfPosts
+ */
+export async function loadMorePosts(posts: Post[], numberOfPosts: number): Promise<Post[]> {
+
+    const last = posts[posts.length - 1]
+
+    const cursor = typeof last.createdAt === 'number' ? Timestamp.fromMillis(last.createdAt) : last.createdAt
+    const postsQuery = query(collectionRefs.posts,
+        where('published', '==', true),
+        orderBy('createdAt', 'desc'),
+        startAfter(cursor),
+        limit(numberOfPosts))
+    const newPosts = (await getDocs(postsQuery)).docs.map(postToJSON)
+    return newPosts
 }

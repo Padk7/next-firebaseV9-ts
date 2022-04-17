@@ -5,7 +5,7 @@ import { doc, onSnapshot } from 'firebase/firestore'
 
 export function useUserData() {
     const [user] = useAuthState(auth)
-    const [username, setUsername] = useState(null)
+    const [username, setUsername] = useState<string | null>(null)
 
     useEffect(() => {
         // turn off realtime subscriptions
@@ -13,7 +13,8 @@ export function useUserData() {
         if (user) {
             const ref = doc(firestore, 'users', user.uid)
             unsubscribe = onSnapshot(ref, (d) => {
-                setUsername(d.data()?.username)
+                const name = d.data()?.username
+                if (name) setUsername(name)
             })
         } else {
             setUsername(null)

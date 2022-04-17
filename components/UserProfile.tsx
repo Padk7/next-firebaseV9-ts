@@ -1,4 +1,10 @@
-export default function UserProfile({ user }) {
+import { User } from '../lib/firebase'
+
+type Props = {
+  user: User
+}
+
+export default function UserProfile({ user }: Props) {
   return (
     <div className="box-center">
         <img src={user.photoURL} className="card-img-center" />

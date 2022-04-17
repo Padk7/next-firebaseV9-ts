@@ -1,33 +1,35 @@
 import UserProfile from '../../components/UserProfile'
 import PostFeed from '../../components/PostFeed'
-import { getUserWithUsername, getPostsFromUser, postToJSON } from '../../lib/firebase';
+import { getUserWithUsername, getPostsFromUser, User, Post } from '../../lib/firebase';
+import { GetServerSideProps } from 'next'
 
-export async function getServerSideProps({ query }){
-  
+type UserProfileProp = {
+  user: User,
+  posts: Post[]
+}
+
+export const getServerSideProps: GetServerSideProps = async({ query }) => {
+  let user: User | null = null
+  let posts: Post[] | null = null
+
   const { username } = query;
 
-  let user = null
-  let posts = null
-
-  const userDoc = await getUserWithUsername(username)
-  if (userDoc) {
-    user = userDoc.data()
-    const postsDocs = await getPostsFromUser(userDoc)
-    if (postsDocs) {
-      posts = postsDocs.map(postToJSON)
+  if (typeof username === 'string') {
+    user = await getUserWithUsername(username)
+    if (user) {
+      posts = await getPostsFromUser(user)
     }
   }
-
   return {
     props: { user, posts }
   }
 }
 
-export default function UserProfilePage({ user, posts }) {
+export default function UserProfilePage({ user, posts }: UserProfileProp) {
   return (
     <main>
       <UserProfile user={user} />
-      <PostFeed posts={posts} />
+      <PostFeed posts={posts} admin={false}/>
     </main>
   )
 }
