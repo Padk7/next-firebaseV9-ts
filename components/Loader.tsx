@@ -1,7 +1,7 @@
 type Props = {
-    show: boolean
+  show: boolean
 }
 
 export default function Loader({ show }: Props) {
-    return show ? <div className="loader"></div> : null
+  return show ? <div className="loader"></div> : null
 }

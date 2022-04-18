@@ -17,6 +17,14 @@ export const getServerSideProps: GetServerSideProps = async({ query }) => {
   if (typeof username === 'string') {
     ;({ user, posts } = await getUserPostsFromUsername(username))
   }
+
+  // If no user, short circuit to 404 page
+  if (!user) {
+    return {
+      notFound: true
+    }
+  }
+
   return {
     props: { user, posts }
   }
