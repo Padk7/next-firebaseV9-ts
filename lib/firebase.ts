@@ -3,23 +3,29 @@ import { Auth, getAuth, GoogleAuthProvider } from 'firebase/auth'
 import {
   collection,
   collectionGroup,
+  doc,
   DocumentData,
+  getDoc,
   getDocs,
   getFirestore,
   Firestore,
   limit,
   orderBy,
   query,
+  Query,
   QueryDocumentSnapshot,
+  serverTimestamp,
+  setDoc,
   startAfter,
   Timestamp,
   where,
-  DocumentReference,
-  doc,
-  getDoc,
-  DocumentSnapshot
+  QueryConstraint,
+  QuerySnapshot
 } from 'firebase/firestore'
 import { getStorage, FirebaseStorage } from 'firebase/storage'
+import kebabCase from 'lodash.kebabcase';
+import { useContext } from 'react';
+import { UserContext } from './context';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCztJbdr8wscumsFzX1MsnObd87HvFk_xQ",
@@ -43,6 +49,8 @@ export const auth: Auth = getAuth()
 export const googleAuthProvider: GoogleAuthProvider = new GoogleAuthProvider()
 export const firestore: Firestore = getFirestore()
 export const storage: FirebaseStorage = getStorage()
+
+export const servTimestamp = serverTimestamp
 
 export type User = {
   uid: string,
@@ -69,6 +77,17 @@ const collectionRefs = {
 }
 
 /// Helper functions
+
+/**
+ * Converts a firestore document to JSON
+ */
+ export function postToJSON(data: DocumentData): Post {
+  return {
+    ...data,
+    createdAt: data?.createdAt ? data.createdAt.toMillis() : null,
+    updatedAt: data?.updatedAt ? data.updatedAt.toMillis() : null
+  } as Post
+}
 
 /**
  * Gets a users/{uid} document with username
@@ -103,10 +122,31 @@ export async function getUserFromUsername(username: string): Promise<User | null
 }
 
 /**
+ * Gets posts query for current user
+ * @param {number} numPosts The number of posts to retrieve
+ * @param {boolean} published Are the posts published?
+*/
+export function getCurrentUserPostsQuery(numPosts=0, published=false) : Query<DocumentData> | null {
+  if (auth?.currentUser) {
+    const postsRef = collection(firestore,'users', auth?.currentUser?.uid,'posts')
+    if (postsRef) {
+      const queryConstraints: QueryConstraint[] = [orderBy('createdAt', 'desc')]
+      if (numPosts > 0) queryConstraints.unshift(limit(numPosts))
+      if (published) queryConstraints.unshift(where('published', '==', true))
+  
+      return query(postsRef, ...queryConstraints)
+    }
+  }
+  return null
+}
+
+/**
  * Gets all users/{uid}/posts documents from username
  * @param {string} username
+ * @param {number} numPosts The number of posts to retrieve
+ * @param {boolean} published Are the posts published?
 */
-export async function getUserPostsFromUsername(username: string) {
+export async function getUserPostsFromUsername(username: string, numPosts=0, published=false) {
   let user: User | null = null
   let posts: Post[] = []
 
@@ -114,24 +154,15 @@ export async function getUserPostsFromUsername(username: string) {
   if (userDoc) {
     user = userDoc.data() as User
     const postsRef = collection(userDoc.ref, 'posts')
-    const postsQuery = query(postsRef,
-      where('published', '==', true),
-      limit(5),
-      orderBy('createdAt', 'desc'))
+
+    const queryConstraints: QueryConstraint[] = [orderBy('createdAt', 'desc')]
+    if (numPosts > 0) queryConstraints.unshift(limit(numPosts))
+    if (published) queryConstraints.unshift(where('published', '==', true))
+
+    const postsQuery = query(postsRef, ...queryConstraints)
     posts = (await getDocs(postsQuery)).docs.map((doc) => { return postToJSON(doc.data()) })
   }
   return { user, posts }
-}
-
-/**
- * Converts a firestore document to JSON
- */
-function postToJSON(data: DocumentData): Post {
-  return {
-    ...data,
-    createdAt: data.createdAt.toMillis(),
-    updatedAt: data.updatedAt.toMillis()
-  } as Post
 }
 
 /**
@@ -199,4 +230,32 @@ export async function getAllPostPaths() {
 
 export function getPostRefFromPath(path: string) {
   return doc(firestore, path)
+}
+
+export type PostFormData = {
+  title: string,
+  username: string,
+  slug: string
+}
+
+// Create a new post in firestore
+export const createPostDoc = async ( formData: PostFormData ) => {
+  const uid = auth?.currentUser?.uid;
+  if (uid) {
+    const ref = doc(firestore, 'users', uid, 'posts', formData.slug);
+    const data = {
+      title: formData.title,
+      slug: formData.slug,
+      uid: uid,
+      username: formData.username,
+      published: false,
+      content: '# hello world!',
+      heartCount: 0,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }
+    await setDoc(ref, data);
+    return true
+  }
+  return false
 }
