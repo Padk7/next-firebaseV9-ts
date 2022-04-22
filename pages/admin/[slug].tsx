@@ -63,10 +63,10 @@ type PostFormProp = {
 function PostForm({ defaultValues, postRef, preview }: PostFormProp) {
   const { register, handleSubmit, reset, watch } = useForm({ defaultValues, mode: 'onChange' });
 
-  const onSubmit = handleSubmit( async( data ) => {
-    await updatePostDoc(postRef, data as UpdatePostProp)
-    reset( data );
+  const onSubmit = handleSubmit( async( {content, published} ) => {
+    await updatePostDoc(postRef, {content, published} as UpdatePostProp)
     toast.success('Post updated successfully!')
+    reset({ content, published })
   })
 
   return (

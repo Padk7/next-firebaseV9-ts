@@ -57,13 +57,13 @@ export type User = {
 
 export type Post = {
   content: string,
-  createdAt: Timestamp | number,
+  createdAt: Timestamp | number | null,
   heartCount: number,
   published: boolean,
   slug: string,
   title: string,
   uid: string,
-  updatedAt: Timestamp | number,
+  updatedAt: Timestamp | number | null,
   username: string
 }
 
