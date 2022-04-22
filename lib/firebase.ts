@@ -5,6 +5,7 @@ import {
   collectionGroup,
   doc,
   DocumentData,
+  DocumentReference,
   getDoc,
   getDocs,
   getFirestore,
@@ -18,14 +19,11 @@ import {
   setDoc,
   startAfter,
   Timestamp,
+  updateDoc,
   where,
-  QueryConstraint,
-  QuerySnapshot
+  QueryConstraint
 } from 'firebase/firestore'
 import { getStorage, FirebaseStorage } from 'firebase/storage'
-import kebabCase from 'lodash.kebabcase';
-import { useContext } from 'react';
-import { UserContext } from './context';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCztJbdr8wscumsFzX1MsnObd87HvFk_xQ",
@@ -49,8 +47,6 @@ export const auth: Auth = getAuth()
 export const googleAuthProvider: GoogleAuthProvider = new GoogleAuthProvider()
 export const firestore: Firestore = getFirestore()
 export const storage: FirebaseStorage = getStorage()
-
-export const servTimestamp = serverTimestamp
 
 export type User = {
   uid: string,
@@ -258,4 +254,21 @@ export const createPostDoc = async ( formData: PostFormData ) => {
     return true
   }
   return false
+}
+
+export const getCurrentUserPostRef = (slug: string) => {
+  const uid = auth?.currentUser?.uid;
+  return uid? doc(firestore, 'users', uid, 'posts', slug) : null
+}
+
+export type UpdatePostProp = {
+  content: string,
+  published: boolean
+}
+
+export const updatePostDoc = async(postRef: DocumentReference<DocumentData>, postData: UpdatePostProp) => {
+  await updateDoc(postRef, {
+    ...postData,
+    updatedAt: serverTimestamp()
+  })
 }
