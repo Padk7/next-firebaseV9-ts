@@ -1,5 +1,3 @@
-This repo contains the source code for a next-js-firebase tutorial.
+This repo contains the source code for a blog, using next-js, Firebase V9 SDK and typescript.
 
-The original project source code has been modified to use Firebase V9 SDK and typescript.
-
-Original tutorial uses Firebase V8 and javascript and can be found here: https://fireship.io/courses/react-next-firebase/
+The original tutorial uses Firebase V8 and javascript and can be found here: https://fireship.io/courses/react-next-firebase/
