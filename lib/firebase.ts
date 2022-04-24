@@ -10,6 +10,7 @@ import {
   getDocs,
   getFirestore,
   Firestore,
+  increment,
   limit,
   orderBy,
   query,
@@ -21,7 +22,8 @@ import {
   Timestamp,
   updateDoc,
   where,
-  QueryConstraint
+  QueryConstraint,
+  writeBatch
 } from 'firebase/firestore'
 import { getStorage, FirebaseStorage, ref, uploadBytesResumable } from 'firebase/storage'
 export { getDownloadURL } from 'firebase/storage'
@@ -78,7 +80,7 @@ const collectionRefs = {
 /**
  * Converts a firestore document to JSON
  */
- export function postToJSON(data: DocumentData): Post {
+export function postToJSON(data: DocumentData): Post {
   return {
     ...data,
     createdAt: data?.createdAt ? data.createdAt.toMillis() : null,
@@ -123,14 +125,14 @@ export async function getUserFromUsername(username: string): Promise<User | null
  * @param {number} numPosts The number of posts to retrieve
  * @param {boolean} published Are the posts published?
 */
-export function getCurrentUserPostsQuery(numPosts=0, published=false) : Query<DocumentData> | null {
+export function getCurrentUserPostsQuery(numPosts = 0, published = false): Query<DocumentData> | null {
   if (auth?.currentUser) {
-    const postsRef = collection(firestore,'users', auth?.currentUser?.uid,'posts')
+    const postsRef = collection(firestore, 'users', auth?.currentUser?.uid, 'posts')
     if (postsRef) {
       const queryConstraints: QueryConstraint[] = [orderBy('createdAt', 'desc')]
       if (numPosts > 0) queryConstraints.unshift(limit(numPosts))
       if (published) queryConstraints.unshift(where('published', '==', true))
-  
+
       return query(postsRef, ...queryConstraints)
     }
   }
@@ -143,7 +145,7 @@ export function getCurrentUserPostsQuery(numPosts=0, published=false) : Query<Do
  * @param {number} numPosts The number of posts to retrieve
  * @param {boolean} published Are the posts published?
 */
-export async function getUserPostsFromUsername(username: string, numPosts=0, published=false) {
+export async function getUserPostsFromUsername(username: string, numPosts = 0, published = false) {
   let user: User | null = null
   let posts: Post[] = []
 
@@ -236,7 +238,7 @@ export type PostFormData = {
 }
 
 // Create a new post in firestore
-export const createPostDoc = async ( formData: PostFormData ) => {
+export const createPostDoc = async (formData: PostFormData) => {
   const uid = auth?.currentUser?.uid;
   if (uid) {
     const ref = doc(firestore, 'users', uid, 'posts', formData.slug);
@@ -259,7 +261,7 @@ export const createPostDoc = async ( formData: PostFormData ) => {
 
 export const getCurrentUserPostRef = (slug: string) => {
   const uid = auth?.currentUser?.uid;
-  return uid? doc(firestore, 'users', uid, 'posts', slug) : null
+  return uid ? doc(firestore, 'users', uid, 'posts', slug) : null
 }
 
 export type UpdatePostProp = {
@@ -267,7 +269,7 @@ export type UpdatePostProp = {
   published: boolean
 }
 
-export const updatePostDoc = async(postRef: DocumentReference<DocumentData>, postData: UpdatePostProp) => {
+export const updatePostDoc = async (postRef: DocumentReference<DocumentData>, postData: UpdatePostProp) => {
   await updateDoc(postRef, {
     ...postData,
     updatedAt: serverTimestamp()
@@ -282,5 +284,31 @@ export const uploadImage = (file: File, extension: string) => {
   return {
     ref: imgRef,
     task: uploadBytesResumable(imgRef, file)
+  }
+}
+
+export type HeartButtonProp = {
+  postRef: DocumentReference<DocumentData>
+}
+
+export const getHeartRef = (postRef: DocumentReference<DocumentData>) => {
+  if (!auth.currentUser) {
+    throw 'Only authenticated users can upload'
+  }
+  return doc(postRef, 'hearts', auth.currentUser.uid)
+}
+
+export const addOrRemoveHeart = async (postRef: DocumentReference<DocumentData>, heartRef: DocumentReference<DocumentData>, remove = false) => {
+  const uid = auth.currentUser?.uid
+  if (uid) {
+    const batch = writeBatch(firestore)
+    if (remove) {
+      batch.update(postRef, { heartCount: increment(-1) })
+      batch.delete(heartRef)
+    } else {
+      batch.update(postRef, { heartCount: increment(1) })
+      batch.set(heartRef, { uid })
+    }
+    await batch.commit()
   }
 }

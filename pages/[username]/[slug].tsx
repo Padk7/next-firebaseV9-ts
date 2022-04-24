@@ -4,6 +4,8 @@ import { ParsedUrlQuery } from "querystring"
 import { useDocumentData } from 'react-firebase-hooks/firestore';
 import { getPostFromUsernameAndSlug, getAllPostPaths, getPostRefFromPath, Post } from '../../lib/firebase'
 import PostContent from '../../components/PostContent'
+import AuthCheck from '../../components/AuthCheck';
+import HeartButton from '../../components/HeartButton';
 
 interface IParams extends ParsedUrlQuery {
   username: string,
@@ -66,6 +68,9 @@ export default function PostSlug(props: PostProps) {
           <strong>{post?.heartCount || 0} 🤍</strong>
         </p>
 
+        <AuthCheck>
+          <HeartButton postRef={postRef} />
+        </AuthCheck>
       </aside>
     </main>
   )
