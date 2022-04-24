@@ -23,7 +23,8 @@ import {
   where,
   QueryConstraint
 } from 'firebase/firestore'
-import { getStorage, FirebaseStorage } from 'firebase/storage'
+import { getStorage, FirebaseStorage, ref, uploadBytesResumable } from 'firebase/storage'
+export { getDownloadURL } from 'firebase/storage'
 
 const firebaseConfig = {
   apiKey: "AIzaSyCztJbdr8wscumsFzX1MsnObd87HvFk_xQ",
@@ -271,4 +272,15 @@ export const updatePostDoc = async(postRef: DocumentReference<DocumentData>, pos
     ...postData,
     updatedAt: serverTimestamp()
   })
+}
+
+export const uploadImage = (file: File, extension: string) => {
+  if (!auth.currentUser) {
+    throw 'Only authenticated users can upload'
+  }
+  const imgRef = ref(storage, `uploads/${auth.currentUser.uid}/${Date.now()}.${extension}`)
+  return {
+    ref: imgRef,
+    task: uploadBytesResumable(imgRef, file)
+  }
 }

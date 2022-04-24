@@ -1,7 +1,7 @@
 import styles from '../../styles/Admin.module.css'
 import AuthCheck from '../../components/AuthCheck'
 import { UpdatePostProp, getCurrentUserPostRef, updatePostDoc } from '../../lib/firebase'
-
+import ImageUploader from '../../components/ImageUploader'
 import { useState } from 'react'
 import { useRouter } from 'next/router'
 
@@ -60,9 +60,15 @@ type PostFormProp = {
   preview: boolean
 }
 
-function PostForm({ defaultValues, postRef, preview }: PostFormProp) {
-  const { register, handleSubmit, reset, watch } = useForm({ defaultValues, mode: 'onChange' });
+interface FormInputs {
+  singleErrorInput: string
+}
 
+function PostForm({ defaultValues, postRef, preview }: PostFormProp) {
+  const { register, handleSubmit, reset, watch, formState } = useForm({ defaultValues, mode: 'onChange' });
+
+  const { errors, isValid, isDirty } = formState
+  
   const onSubmit = handleSubmit( async( {content, published} ) => {
     await updatePostDoc(postRef, {content, published} as UpdatePostProp)
     toast.success('Post updated successfully!')
@@ -78,15 +84,22 @@ function PostForm({ defaultValues, postRef, preview }: PostFormProp) {
       )}
 
       <div className={preview ? styles.hidden : styles.controls}>
-  
-        <textarea {...register("content")}></textarea>
+
+        <ImageUploader />
+
+        <textarea {...register("content",{
+          minLength: { value: 10, message:"content is too short"},
+          maxLength: { value: 20000, message:"content is too long"},
+          required: true})}></textarea>
+
+        {errors.content && <p className='text-danger'>{errors.content.message}</p>}
 
         <fieldset>
           <input className={styles.checkbox} type="checkbox" {...register("published")} />
           <label>Published</label>
         </fieldset>
 
-        <button type="submit" className="btn-green">
+        <button type="submit" className="btn-green" disabled={!isDirty || !isValid}>
           Save Changes
         </button>
       </div>
